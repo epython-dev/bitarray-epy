@@ -1,5 +1,6 @@
-from bitarray._header import __version__, getbit, setbit, reverse_table
-
+from bitarray._header import (
+    __version__, getbit, setbit, setunused, reverse_table, pybit_as_int
+)
 
 default_endian = 1
 
@@ -51,9 +52,6 @@ class bitarray:
             self._buffer.extend(bytearray(newsize - size))
         else:
             del self._buffer[newsize:]
-
-    def bytereverse(self, a: int, b: int):
-        self._buffer[a:b] = self._buffer[a:b].translate(reverse_table)
 
     def _copy_n(self, a: int, other, b: int, n: int):
         assert 0 <= a <= self._nbits
@@ -125,6 +123,51 @@ class bitarray:
 
         else:
             raise TypeError("'%s' object is not iterable" % type(obj).__name__)
+
+    # ------------------- Implementation of bitarray methods ---------------
+
+    def append(self, value):
+        vi :int = pybit_as_int(value)
+        self._resize(self._nbits + 1)
+        setbit(self, self._nbits - 1, vi)
+
+    def bytereverse(self, a: int, b: int):
+        self._buffer[a:b] = self._buffer[a:b].translate(reverse_table)
+
+    def clear(self):
+        self._resize(0)
+
+    def copy(self):
+        res = bitarray(self._nbits, self._endian)
+        res._buffer = bytearray(self._buffer)
+
+    def endian(self) -> str:
+        return 'big' if self._endian else 'little'
+
+    def extend(self, obj):
+        self._extend_dispatch(obj)
+
+    def fill(self) -> int:
+        p: int = setunused(self)
+        self._resize(self, self._nbits + p)
+        return p
+
+    def insert(self, i :int, value):
+        vi :int = pybit_as_int(value)
+        ...
+
+    def __len__(self) -> int:
+        return self._nbits
+
+    def __repr__(self) -> str:
+        if self._nbits == 0:
+            return 'bitarray()'
+
+        res = ["bitarray('"]
+        for i in range(self._nbits):
+            res.append('1' if getbit(self, i) else '0')
+        res.append("')")
+        return ''.join(res)
 
 
 def get_default_endian():
