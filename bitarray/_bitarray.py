@@ -67,6 +67,27 @@ class bitarray:
             for i in range(n - 1, -1, -1):
                 self[i + a] = other[i + b]
 
+    def _count(self, vi: int, a: int, b:int):
+        res: int = 0
+        assert 0 <= a <= self._nbits
+        assert 0 <= b <= self._nbits
+        if a >= b:
+            return 0
+
+        if b >= a + 8:
+            byte_a: int = bits2bytes(a)
+            byte_b: int = b // 8
+
+            res += self._count(1, a, 8 * byte_a)
+            for i in range(byte_a, byte_b):
+                res += bitcount_lookup[self._buffer[i]]
+            res += self._count(1, 8 * byte_b, b)
+        else:
+            for i in range(a, b):
+                res += getbit(self, i)
+
+        return res if vi else b - a - res
+
     def _delete_n(self, start: int, n: int):
         nbits: int = self._nbits
 
@@ -140,6 +161,17 @@ class bitarray:
         res = bitarray(self._nbits, self._endian)
         res._buffer = bytearray(self._buffer)
 
+    def count(self, value: int = 1,
+              start: int = 0, stop = None, step: int = 1):
+        vi: int = pybit_as_int(value)
+        if stop is None:
+            stop = self._nbits
+
+        if step == 1:
+            return self._count(vi, start, stop)
+        else:
+            ...
+
     def endian(self) -> str:
         return 'big' if self._endian else 'little'
 
@@ -158,6 +190,9 @@ class bitarray:
     def __len__(self) -> int:
         return self._nbits
 
+    def __memoryview__(self) -> memoryview: # XXX
+        return memoryview(self._buffer)
+
     def __repr__(self) -> str:
         if self._nbits == 0:
             return 'bitarray()'
@@ -168,6 +203,19 @@ class bitarray:
         res.append("')")
         return ''.join(res)
 
+    def reverse(self):
+        i :int = 0
+        j :int = self._nbits - 1
+        while i < j:
+            t: int = getbit(self, i)
+            setbit(self, i, getbit(self, j))
+            setbit(self, j, t)
+            i += 1
+            j -= 1
+
+    def tobytes(self):
+        setunused(self)
+        return bytes(self._buffer)
 
 def get_default_endian():
     return 'big' if default_endian else 'little'
