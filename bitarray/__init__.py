@@ -1,11 +1,7 @@
-from __future__ import absolute_import
-
-from bitarray._bitarray import (bitarray, decodetree, bits2bytes,
+from bitarray._bitarray import (bitarray, bits2bytes, __version__,
                                 get_default_endian, _set_default_endian)
 
-__version__ = '2.4.1'
-
-__all__ = ['bitarray', 'frozenbitarray', 'decodetree', 'bits2bytes']
+__all__ = ['bitarray', 'frozenbitarray', 'bits2bytes']
 
 
 class frozenbitarray(bitarray):
