@@ -162,7 +162,7 @@ class bitarray:
         res._buffer = bytearray(self._buffer)
 
     def count(self, value: int = 1,
-              start: int = 0, stop = None, step: int = 1):
+              start: int = 0, stop = None, step: int = 1) -> int:
         vi: int = pybit_as_int(value)
         if stop is None:
             stop = self._nbits
@@ -186,6 +186,20 @@ class bitarray:
     def insert(self, i :int, value):
         vi :int = pybit_as_int(value)
         ...
+
+    def invert(self, i = None):
+        if i is None:
+            for x in range(len(self._buffer)):
+                self._buffer[x] ^= 0xff
+            return
+
+        if i < 0:
+            i += self._nbits
+
+        if i < 0 or i >= self._nbits:
+            raise IndexError("index out of range")
+
+        setbit(self, i, not getbit(self, i))
 
     def __len__(self) -> int:
         return self._nbits
@@ -213,9 +227,46 @@ class bitarray:
             i += 1
             j -= 1
 
+    def setall(self, value: int):
+        vi: int = pybit_as_int(value)
+        for i in range(len(self._buffer)):
+            self._buffer[i] = 0xff if vi else 0x00
+
     def tobytes(self):
         setunused(self)
         return bytes(self._buffer)
+
+    def tolist(self):
+        return [getbit(self, i) for i in range(self._nbits)]
+
+    def unpack(self, zero=b'\0', one=b'\1') -> bytes:
+        res = bytearray()
+        for i in range(self._nbits):
+            res.append(one if getbit(self, i) else zero)
+        return bytes(res)
+
+    def pack(self, data: bytes):
+        nbits: int = self._nbits
+        nbytes: int = len(data)
+
+        self._resize(nbits + nbytes)
+
+        for i in range(nbytes):
+            setbit(self, nbits + i, data[i])
+
+    def pop(self, i: int = -1):
+        if self._nbits == 0:
+            raise IndexError("pop from empty bitarray")
+
+        if i < 0:
+            i += self._nbits
+
+        if i < 0 or i >= self._nbits:
+            raise IndexError("pop index out of range")
+
+        vi = getbit(self, i)
+        self._delete_n(self, i, 1)
+        return vi
 
 def get_default_endian():
     return 'big' if default_endian else 'little'
