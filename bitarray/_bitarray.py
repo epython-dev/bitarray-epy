@@ -62,10 +62,10 @@ class bitarray:
 
         if a <= b:  # loop forward
             for i in range(n):
-                self[i + a] = other[i + b]
+                setbit(self, i + a, getbit(other, i + b))
         else:       # loop backwards
             for i in range(n - 1, -1, -1):
-                self[i + a] = other[i + b]
+                setbit(self, i + a, getbit(other, i + b))
 
     def _count(self, vi: int, a: int, b:int):
         res: int = 0
@@ -95,7 +95,7 @@ class bitarray:
         assert 0 <= n and n <= nbits - start
         assert start != nbits or n == 0  # start == nbits implies n == 0
 
-        self.copy_n(start, self, start + n, nbits - start - n)
+        self._copy_n(start, self, start + n, nbits - start - n)
         self._resize(nbits - n);
 
     def _insert_n(self, start :int, n: int):
@@ -267,6 +267,40 @@ class bitarray:
         vi = getbit(self, i)
         self._delete_n(self, i, 1)
         return vi
+
+    def __add__(self, other):
+        res = self.copy()
+        res._extend_dispatch(other)
+        return res
+
+    def __iadd__(self, other):
+        self._extend_dispatch(other)
+
+    def __mul__(self, n: int):
+        ...
+
+    def __delitem__(self, a):
+        if isinstance(a, int):
+            self._delete_n(a, 1)
+
+        elif isinstance(a, slice):
+            start, stop, step = a.indices(self._nbits)
+            assert step > 0
+            if step == 1:
+                self._delete_n(self, start, stop - start)
+            else:
+                i = j = start
+                while i < self._nbits:
+                    if (i - start) % step != 0 or i >= stop:
+                        setbit(self, j, getbit(self, i))
+                        j += 1
+                    i += 1
+                self._resize(self._nbits - len(range(start, stop, step)))
+        else:
+            TypeError("bitarray or int expected for slice assignment, not %s",
+                      type(a).__name__)
+
+
 
 def get_default_endian():
     return 'big' if default_endian else 'little'
