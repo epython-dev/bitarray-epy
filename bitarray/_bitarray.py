@@ -1,5 +1,5 @@
 from bitarray._header import (
-    __version__, getbit, setbit, setunused, reverse_table, pybit_as_int
+    getbit, setbit, setunused, reverse_table, pybit_as_int
 )
 
 default_endian = 1
@@ -31,10 +31,12 @@ class bitarray:
         if initial is None:
             self._nbits = 0
             self._buffer = bytearray()
+            return
 
         if isinstance(initial, int):
             self._nbits = initial
             self._buffer = bytearray(bits2bytes(initial))
+            return
 
         self._nbits = 0
         self._buffer = bytearray()
@@ -44,13 +46,11 @@ class bitarray:
         size: int = len(self._buffer)
         newsize: int = bits2bytes(nbits)
 
-        if newsize == size:  # buffer size hasn't changed - bypass everything
-            self._nbits = nbits
-            return
+        self._nbits = nbits
 
         if newsize > size:
             self._buffer.extend(bytearray(newsize - size))
-        else:
+        if newsize < size:
             del self._buffer[newsize:]
 
     def _copy_n(self, a: int, other, b: int, n: int):
@@ -103,12 +103,11 @@ class bitarray:
             if c == '1': vi = 1
             if c in ('_', ' ', '\n', '\r',  '\t', '\v'):
                 continue
-            if vi > 0:
-                self._resize(self._nbits + 1)
-                setbit(self, self._nbits - 1, vi)
-                continue
-            raise ValueError("expected '0' or '1' (or whitespace, or "
-                             "underscore), got '%c' (0x%02x)", chr(c), c);
+            if vi < 0:
+                raise ValueError("expected '0' or '1' (or whitespace, or "
+                        "underscore), got '%s' (0x%02x)" % (c, ord(c)));
+            self._resize(self._nbits + 1)
+            setbit(self, self._nbits - 1, vi)
 
     def _extend_dispatch(self, obj):
         if isinstance(obj, bitarray):
