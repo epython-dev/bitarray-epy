@@ -127,6 +127,30 @@ class bitarray:
         self._resize(nbits + n)
         self._copy_n(start + n, self, start, nbits - start)
 
+    def _repeat(self, m):
+        k: int = self._nbits
+
+        if k == 0 or m == 1:  # nothing to do
+            return 0
+
+        if m <= 0:            # clear
+            return self._resize(0)
+
+        assert m > 1 and k > 0
+        if k >= sys.maxsize // m:
+            raise OverflowError("cannot repeat bitarray (of size %d) "
+                                "%d times", k, m);
+
+        q: int = k * m  # number of resulting bits
+        self._resize(q)
+
+        while k <= q // 2:  # double copies
+            self._copy_n(k, self, 0, k)
+            k *= 2
+        assert q // 2 < k and k <= q
+
+        self._copy_n(k, self, 0, q - k)  # copy remaining bits
+
     def _count(self, vi: int, a: int, b:int) -> int:
         res: int = 0
         assert 0 <= a <= self._nbits
@@ -448,7 +472,15 @@ class bitarray:
     def __mul__(self, n: int):
         if not isinstance(n, int):
             raise TypeError
-        ...
+        res = self.copy()
+        res._repeat(n)
+        return res
+
+    def __imul__(self, n: int):
+        if not isinstance(n, int):
+            raise TypeError
+        self._repeat(n)
+        return self
 
     def __delitem__(self, a):
         if isinstance(a, int):

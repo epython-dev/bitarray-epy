@@ -2172,7 +2172,7 @@ class NumberTests(unittest.TestCase, Util):
         a >>= 4
         self.assertEqual(a, bitarray('0000001'))
 
-tests.append(NumberTests)
+#tests.append(NumberTests)
 
 # ---------------------------------------------------------------------------
 
