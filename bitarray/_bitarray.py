@@ -1,4 +1,4 @@
-import sys
+from sys import maxsize
 
 from bitarray._header import (
     getbit, setbit, zeroed_last_byte, setunused, bitcount_lookup,
@@ -137,7 +137,7 @@ class bitarray:
             return self._resize(0)
 
         assert m > 1 and k > 0
-        if k >= sys.maxsize // m:
+        if k >= maxsize // m:
             raise OverflowError("cannot repeat bitarray (of size %d) "
                                 "%d times", k, m);
 
@@ -160,8 +160,8 @@ class bitarray:
             byte_b: int = b // 8
 
             self._setrange(a, 8 * byte_a, vi)
-            for i in range(byte_a, byte_b):
-                self._buffer[i] = 0xff if vi else 0x00
+            self._buffer[byte_a:byte_b] = (
+                byte_b - byte_a) * bytes([0xff if vi else 0x00])
             self._setrange(8 * byte_b, b, vi)
         else:
             for i in range(a, b):
@@ -215,6 +215,23 @@ class bitarray:
         for i in range(a, b):
             if getbit(self, i) == vi:
                 return i
+
+        return -1
+
+    def _find(self, xa, start: int, stop: int) -> int:
+        assert 0 <= start and start <= self._nbits
+        assert 0 <= stop and stop <= self._nbits
+
+        if xa._nbits == 1:  # faster for sparse bitarrays
+            return self._find_bit(getbit(xa, 0), start, stop);
+
+        while start <= stop - xa._nbits:
+            for i in range(xa._nbits):
+                if getbit(self, start + i) != getbit(xa, i):
+                    break
+            else:
+                return start
+            start += 1
 
         return -1
 
@@ -317,9 +334,9 @@ class bitarray:
         self._resize(self._nbits + 1)
         setbit(self, self._nbits - 1, vi)
 
-    def bytereverse(self, a: int = 0, b: int = sys.maxsize):
+    def bytereverse(self, a: int = 0, b: int = maxsize):
         nbytes: int = len(self._buffer)
-        if b == sys.maxsize:
+        if b == maxsize:
             b = nbytes
 
         if a < 0 or a > nbytes or b < 0 or b > nbytes:
@@ -336,7 +353,7 @@ class bitarray:
         return res
 
     def count(self, vi: int = 1,
-              start: int = 0, stop: int = sys.maxsize, step: int = 1) -> int:
+              start: int = 0, stop: int = maxsize, step: int = 1) -> int:
         check_bit(vi)
 
         start = normalize_index(self._nbits, step, start)
@@ -367,6 +384,26 @@ class bitarray:
         p: int = setunused(self)
         self._resize(self._nbits + p)
         return p
+
+    def find(self, x, start: int = 0, stop: int = maxsize):
+        start = normalize_index(self._nbits, 1, start)
+        stop = normalize_index(self._nbits, 1, stop)
+
+        if isinstance(x, int):
+            check_bit(x)
+            return self._find_bit(x, start, stop)
+
+        if isinstance(x, bitarray):
+            return self._find(x, start, stop)
+
+        raise TypeError("bitarray or int expected, not '%s'" %
+                        type(x).__name__)
+
+    def index(self, *args):
+        res = self.find(*args)
+        if res < 0:
+            raise ValueError("%r not in bitarray" % (args[0]))
+        return res
 
     def insert(self, i :int, vi: int):
         i = normalize_index(self._nbits, 1, i)
