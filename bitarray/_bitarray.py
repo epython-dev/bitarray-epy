@@ -151,6 +151,22 @@ class bitarray:
 
         self._copy_n(k, self, 0, q - k)  # copy remaining bits
 
+    def _setrange(a: int, b: int, vi: int):
+        assert 0 <= a <= self._nbits
+        assert 0 <= b <= self._nbits
+
+        if b >= a + 8:
+            byte_a: int = bits2bytes(a)
+            byte_b: int = b // 8
+
+            self._setrange(a, 8 * byte_a, vi)
+            for i in range(byte_a, byte_b):
+                self._buffer[i] = 0xff if vi else 0x00
+            self._setrange(8 * byte_b, b, vi)
+        else:
+            for i in range(a, b):
+                setbit(self, i, vi)
+
     def _count(self, vi: int, a: int, b:int) -> int:
         res: int = 0
         assert 0 <= a <= self._nbits
@@ -270,7 +286,7 @@ class bitarray:
             wi: int = getbit(other, i)
 
             if vi != wi:
-                if op == Py_LT:   cmp = v1 <  wi
+                if op == Py_LT:   cmp = vi <  wi
                 elif op == Py_LE: cmp = vi <= wi
                 elif op == Py_EQ: cmp = 0
                 elif op == Py_NE: cmp = 1
@@ -402,6 +418,11 @@ class bitarray:
         check_bit(vi)
         for i in range(len(self._buffer)):
             self._buffer[i] = 0xff if vi else 0x00
+
+    def sort(self, reverse=False):
+        cnt: int = self._count(reverse, 0, self._nbits)
+        self._setrange(0, cnt, reverse)
+        self._setrange(cnt, self._nbits, not reverse)
 
     def to01(self):
         return ''.join(str(getbit(self, i)) for i in range(self._nbits))
