@@ -15,9 +15,6 @@ object is initialized.  A frozenbitarray is immutable and hashable.
 Its contents cannot be altered after it is created; however, it can be used
 as a dictionary key.
 """
-    def __init__(self, *args, **kwargs):
-        self._freeze()
-
     def __repr__(self):
         return 'frozen' + bitarray.__repr__(self)
 
