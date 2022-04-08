@@ -257,6 +257,7 @@ class bitarray:
             setbit(self, self._nbits - 1, vi)
 
     def _extend_01(self, s: str):
+        s.encode('ascii')  # to raise UnicodeEncodeError
         org_bits: int = self._nbits
         for c in s:
             vi: int = -1

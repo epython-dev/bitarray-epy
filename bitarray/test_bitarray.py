@@ -2351,7 +2351,7 @@ class ExtendTests(unittest.TestCase, Util):
         a = bitarray()
         a.extend(u'001 011_')
         self.assertEqual(a, bitarray('001011'))
-        #self.assertRaises(UnicodeEncodeError, a.extend, u'1\u2605 0')
+        self.assertRaises(UnicodeEncodeError, a.extend, u'1\u2605 0')
         self.assertEqual(a, bitarray('001011'))
         self.check_obj(a)
 
