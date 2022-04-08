@@ -1,0 +1,10 @@
+Notes:
+
+  * Currently running 168 (of the 410) tests in 3.9s
+    (running these tests with regular bitarray takes 0.185s)
+
+  * Using bytearray object as buffer
+
+  * Not sure how to implement memoryview(a)
+
+  * How can standard library calls (memmove(), memcpy(), etc.) be made?
