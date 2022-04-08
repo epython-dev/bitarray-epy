@@ -1,12 +1,25 @@
-from bitarray import bitarray
+from bitarray import bitarray, _set_default_endian
+from bitarray.test_bitarray import Util
 
-a = bitarray(endian='little')
+class X(Util):
+
+    def test(self):
+        for lst in self.randomlists():
+            a = bitarray(lst)
+            if a.tolist() != lst:
+                print(lst)
+                print(a)
+                return
+
+"""
+x = X()
+x.test()
+
+tup = 0, 1, 0
+print(hasattr(tup, '__iter__'))
+a = bitarray(tup)
 print(a)
-print(a.endian())
-a.frombytes(b'A')
+a.extend(tup)
 print(a)
-del a[4:]
-print(a)
-print(a.tolist())
-a.reverse()
-print(a)
+"""
+_set_default_endian(0)

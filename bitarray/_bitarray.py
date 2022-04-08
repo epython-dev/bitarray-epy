@@ -31,7 +31,7 @@ def endian_from_string(s: str) -> int:
     if s == 'big':
         return 1
     raise ValueError("bit endianness must be either "
-                     "'little' or 'big', not '%s'", s)
+                     "'little' or 'big', not '%s'" % s)
 
 def calc_slicelength(start: int, stop: int, step: int):
     assert step < 0 or (start >= 0 and stop >= 0)    # step > 0
@@ -243,8 +243,14 @@ class bitarray:
         self._copy_n(self_nbits, other, 0, other_nbits)
 
     def _extend_iter(self, iterator):
+        org_bits: int = self._nbits
         for vi in iterator:
-            vi = check_bit(vi)
+            if not isinstance(vi, int):
+                self._resize(org_bits)
+                raise TypeError
+            if vi < 0 or vi > 1:
+                self._resize(org_bits)
+                raise ValueError("bit must be 0 or 1, got %d" % vi)
             self._resize(self._nbits + 1)
             setbit(self, self._nbits - 1, vi)
 
@@ -678,4 +684,6 @@ def get_default_endian():
 
 def _set_default_endian(s: str, /):
     global default_endian
+    if not isinstance(s, str):
+        raise TypeError
     default_endian = endian_from_string(s)
