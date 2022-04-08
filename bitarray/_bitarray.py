@@ -328,18 +328,18 @@ class bitarray:
             setbit(self, self._nbits - 1, vi)
 
     def _extend_01(self, s: str):
-        s.encode('ascii')  # to raise UnicodeEncodeError
         org_bits: int = self._nbits
-        for c in s:
+        ignore = {ord(c) for c in '_ \n\r\t\v'}
+        for c in s.encode('ascii'):
             vi: int = -1
-            if c == '0': vi = 0
-            if c == '1': vi = 1
-            if c in ('_', ' ', '\n', '\r',  '\t', '\v'):
+            if c == ord('0'): vi = 0
+            if c == ord('1'): vi = 1
+            if c in ignore:
                 continue
             if vi < 0:
                 self._resize(org_bits)
                 raise ValueError("expected '0' or '1' (or whitespace, or "
-                        "underscore), got '%s' (0x%02x)" % (c, ord(c)))
+                        "underscore), got '%s' (0x%02x)" % (chr(c), c))
             self._resize(self._nbits + 1)
             setbit(self, self._nbits - 1, vi)
 
@@ -515,11 +515,11 @@ class bitarray:
         if self._nbits == 0:
             return 'bitarray()'
 
-        res = ["bitarray('"]
+        res = bytearray(b"bitarray('")
         for i in range(self._nbits):
-            res.append('1' if getbit(self, i) else '0')
-        res.append("')")
-        return ''.join(res)
+            res.append(ord('1') if getbit(self, i) else ord('0'))
+        res.extend(b"')")
+        return res.decode('ascii')
 
     def reverse(self):
         i :int = 0
