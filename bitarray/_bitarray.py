@@ -1,8 +1,8 @@
 import sys
 
 from bitarray._header import (
-    getbit, setbit, zeroed_last_byte, setunused, reverse_table,
-    normalize_index, check_bit,
+    getbit, setbit, zeroed_last_byte, setunused, bitcount_lookup,
+    reverse_table, normalize_index, check_bit,
 )
 
 
@@ -189,7 +189,7 @@ class bitarray:
 
     def _richcompare(self, other, op):
         if not isinstance(other, bitarray):
-            raise NotImplemented
+            raise NotImplementedError
 
         vs: int = self._nbits
         ws: int = other._nbits
@@ -275,12 +275,12 @@ class bitarray:
 
     def fill(self) -> int:
         p: int = setunused(self)
-        self._resize(self, self._nbits + p)
+        self._resize(self._nbits + p)
         return p
 
-    def insert(self, i :int, value: int):
+    def insert(self, i :int, vi: int):
         i = normalize_index(self._nbits, 1, i)
-        check_bit(value)
+        check_bit(vi)
         self._insert_n(i, 1)
         setbit(self, i, vi)
 
@@ -383,7 +383,7 @@ class bitarray:
             raise IndexError("pop index out of range")
 
         vi = getbit(self, i)
-        self._delete_n(self, i, 1)
+        self._delete_n(i, 1)
         return vi
 
     def __add__(self, other):
