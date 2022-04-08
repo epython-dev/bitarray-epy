@@ -37,8 +37,6 @@ def endian_from_string(s: str) -> int:
                      "'little' or 'big', not '%s'" % s)
 
 def calc_slicelength(start: int, stop: int, step: int) -> int:
-    assert step < 0 or (start >= 0 and stop >= 0)    # step > 0
-    assert step > 0 or (start >= -1 and stop >= -1)  # step < 0
     assert step != 0
 
     if step < 0:
@@ -522,8 +520,8 @@ class bitarray:
         return res.decode('ascii')
 
     def reverse(self):
-        i :int = 0
-        j :int = self._nbits - 1
+        i: int = 0
+        j: int = self._nbits - 1
         while i < j:
             t: int = getbit(self, i)
             setbit(self, i, getbit(self, j))
@@ -630,6 +628,14 @@ class bitarray:
         self._repeat(n)
         return self
 
+    def _get_indices(self, sl, positive=False):
+        start, stop, step = sl.indices(self._nbits)
+        slicelength: int = calc_slicelength(start, stop, step)
+        if positive:
+            start, stop, step = make_step_positive(slicelength,
+                                                   start, stop, step)
+        return slicelength, start, stop, step
+
     def __delitem__(self, item):
         if isinstance(item, int):
             if item < 0:
@@ -639,10 +645,8 @@ class bitarray:
             self._delete_n(item, 1)
 
         elif isinstance(item, slice):
-            start, stop, step = item.indices(self._nbits)
-            slicelength: int = calc_slicelength(start, stop, step)
-            start, stop, step = make_step_positive(slicelength,
-                                                   start, stop, step)
+            slicelength, start, stop, step = self._get_indices(item, True)
+
             if step == 1:
                 self._delete_n(start, slicelength)
             else:
@@ -667,8 +671,7 @@ class bitarray:
             return getbit(self, item)
 
         if isinstance(item, slice):
-            start, stop, step = item.indices(self._nbits)
-            slicelength: int = calc_slicelength(start, stop, step)
+            slicelength, start, stop, step = self._get_indices(item)
 
             res = bitarray(slicelength, self.endian())
             if step == 1:
@@ -686,8 +689,7 @@ class bitarray:
                         "not %s" % type(item).__name__)
 
     def _setslice_bitarray(self, sl, other):
-        start, stop, step = sl.indices(self._nbits)
-        slicelength: int = calc_slicelength(start, stop, step)
+        slicelength, start, stop, step = self._get_indices(sl)
 
         increase: int = other._nbits - slicelength
 
@@ -713,10 +715,7 @@ class bitarray:
 
     def _setslice_bool(self, sl, vi):
         check_bit(vi)
-        start, stop, step = sl.indices(self._nbits)
-        slicelength: int = calc_slicelength(start, stop, step)
-        start, stop, step = make_step_positive(slicelength,
-                                               start, stop, step)
+        slicelength, start, stop, step = self._get_indices(sl, True)
         for i in range(start, stop, step):
             setbit(self, i, vi)
 
