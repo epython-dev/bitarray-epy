@@ -234,7 +234,7 @@ class bitarray:
 
             self._setrange(a, 8 * byte_a, vi)
             self._buffer[byte_a:byte_b] = (
-                byte_b - byte_a) * bytes([0xff if vi else 0x00])
+                (byte_b - byte_a) * (b'\xff' if vi else b'\0'))
             self._setrange(8 * byte_b, b, vi)
         else:
             for i in range(a, b):
@@ -533,7 +533,7 @@ class bitarray:
 
     def setall(self, vi: int):
         check_bit(vi)
-        self._buffer = len(self._buffer) * bytearray([0xff if vi else 0x00])
+        self._buffer[:] = len(self._buffer) * (b'\xff' if vi else b'\0')
 
     def sort(self, reverse=False):
         if not isinstance(reverse, int):
