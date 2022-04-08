@@ -1,7 +1,7 @@
 Notes:
 
-  * Currently running 176 (of the 410) tests in 6.7s
-    (running these tests with regular bitarray takes 0.42s)
+  * Currently running 168 (of the 410) tests in 2.1s
+    (running these tests with regular bitarray takes 0.16s)
 
   * Using bytearray object as buffer
 

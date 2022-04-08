@@ -1,7 +1,8 @@
 from sys import maxsize
 
 from bitarray._header import (
-    getbit, setbit, zeroed_last_byte, setunused, ones_table, bitcount_lookup,
+    getbit, setbit, zeroed_last_byte, setunused,
+    bitmask_table, ones_table, bitcount_lookup,
     reverse_table, normalize_index, check_bit,
 )
 
@@ -123,9 +124,9 @@ class bitarray:
             return
 
         if a % 8 == 0 and b % 8 == 0:            # aligned case
-            p1 = a // 8
-            p2 = (a + n - 1) // 8
-            m = bits2bytes(n)
+            p1: int = a // 8
+            p2: int = (a + n - 1) // 8
+            m: int = bits2bytes(n)
 
             assert p1 + m == p2 + 1
             m2 = ones_table[self._endian][(a + n) % 8]
@@ -139,12 +140,46 @@ class bitarray:
                 self._buffer[p2] = (self._buffer[p2] & m2) | (t2 & ~m2)
             return
 
-        if a <= b:  # loop forward
-            for i in range(n):
-                setbit(self, i + a, getbit(other, i + b))
-        else:       # loop backwards
-            for i in range(n - 1, -1, -1):
-                setbit(self, i + a, getbit(other, i + b))
+        if n < 8:                                # small n case
+            if a <= b:  # loop forward
+                for i in range(n):
+                    setbit(self, i + a, getbit(other, i + b))
+            else:       # loop backwards
+                for i in range(n - 1, -1, -1):
+                    setbit(self, i + a, getbit(other, i + b))
+            return
+
+        # -------------------------------------- # general case
+        p1: int = a // 8
+        p2: int = (a + n - 1) // 8
+        p3: int = b // 8
+        sa: int = a % 8
+        sb: int = -(b % 8)
+        m1: int = ones_table[self._endian][sa]
+        m2: int = ones_table[self._endian][(a + n) % 8]
+
+        assert n >= 8
+        assert a - sa == 8 * p1
+        assert b + sb == 8 * p3
+        assert a + n > 8 * p2
+
+        t1: int = self._buffer[p1]
+        t2: int = self._buffer[p2]
+        t3: int = other._buffer[p3]
+
+        if sa + sb < 0:
+            sb += 8
+        self._copy_n(a - sa, other, b + sb, n - sb)
+        self._shift_r8(p1, p2 + 1, sa + sb)
+
+        if m1:
+            self._buffer[p1] = (self._buffer[p1] & ~m1) | (t1 & m1)
+
+        if m2 and sa + sb:
+            self._buffer[p2] = (self._buffer[p2] & m2) | (t2 & ~m2)
+
+        for i in range(sb):
+            setbit(self, i + a, t3 & bitmask_table[other._endian][(i + b) % 8])
 
     def _delete_n(self, start: int, n: int):
         nbits: int = self._nbits
@@ -154,7 +189,7 @@ class bitarray:
         assert start != nbits or n == 0  # start == nbits implies n == 0
 
         self._copy_n(start, self, start + n, nbits - start - n)
-        self._resize(nbits - n);
+        self._resize(nbits - n)
 
     def _insert_n(self, start :int, n: int):
         nbits: int = self._nbits
@@ -232,7 +267,7 @@ class bitarray:
         assert 0 <= b and b <= self._nbits
         assert 0 <= vi and vi <= 1
         if n <= 0:
-            return -1;
+            return -1
 
         if n > 8:
             byte_a: int = bits2bytes(a)
@@ -261,7 +296,7 @@ class bitarray:
         assert 0 <= stop and stop <= self._nbits
 
         if xa._nbits == 1:  # faster for sparse bitarrays
-            return self._find_bit(getbit(xa, 0), start, stop);
+            return self._find_bit(getbit(xa, 0), start, stop)
 
         while start <= stop - xa._nbits:
             for i in range(xa._nbits):
@@ -304,7 +339,7 @@ class bitarray:
             if vi < 0:
                 self._resize(org_bits)
                 raise ValueError("expected '0' or '1' (or whitespace, or "
-                        "underscore), got '%s' (0x%02x)" % (c, ord(c)));
+                        "underscore), got '%s' (0x%02x)" % (c, ord(c)))
             self._resize(self._nbits + 1)
             setbit(self, self._nbits - 1, vi)
 

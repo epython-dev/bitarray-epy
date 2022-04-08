@@ -812,7 +812,7 @@ class InternalTests(unittest.TestCase, Util):
             x2[i2:j2] = 1
             self.check_overlap(b1, b2, (x1 & x2).any())
     """
-tests.append(InternalTests)
+#tests.append(InternalTests)
 
 # ---------------------------------------------------------------------------
 
