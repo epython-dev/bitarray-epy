@@ -1,6 +1,10 @@
+import sys
+
 from bitarray._header import (
-    getbit, setbit, setunused, reverse_table, normalize_index, check_bit,
+    getbit, setbit, zeroed_last_byte, setunused, reverse_table,
+    normalize_index, check_bit,
 )
+
 
 default_endian = 1
 
@@ -20,6 +24,8 @@ def bits2bytes(n: int, /) -> int:
     return (n + 7) // 8
 
 def endian_from_string(s: str) -> int:
+    if s is '<default>':
+        return default_endian
     if s == 'little':
         return 0
     if s == 'big':
@@ -27,9 +33,34 @@ def endian_from_string(s: str) -> int:
     raise ValueError("bit endianness must be either "
                      "'little' or 'big', not '%s'", s)
 
+def calc_slicelength(start: int, stop: int, step: int):
+    assert step < 0 or (start >= 0 and stop >= 0)    # step > 0
+    assert step > 0 or (start >= -1 and stop >= -1)  # step < 0
+    assert step != 0
+
+    if step < 0:
+        if stop < start:
+            return (start - stop - 1) // (-step) + 1
+    else:
+        if start < stop:
+            return (stop - start - 1) // step + 1
+
+    return 0
+
+def make_step_positive(slicelength: int, start: int, stop: int, step: int):
+    if step < 0:
+        stop = start + 1
+        start = stop + step * (slicelength - 1) - 1
+        step = -step
+
+    assert start >= 0 and stop >= 0 and step > 0 and slicelength >= 0
+    assert calc_slicelength(start, stop, step) == slicelength
+    return start, stop, step
+
+
 class bitarray:
 
-    def __init__(self, initial=0, /, endian: str='big', buffer=None):
+    def __init__(self, initial=0, /, endian: str='<default>'):
         self._endian = endian_from_string(endian)
 
         if isinstance(initial, bool):
@@ -44,6 +75,9 @@ class bitarray:
             self._nbits = initial
             self._buffer = bytearray(bits2bytes(initial))
             return
+
+        if isinstance(initial, bitarray) and endian == '<default>':
+            self._endian = initial._endian
 
         self._nbits = 0
         self._buffer = bytearray()
@@ -166,7 +200,7 @@ class bitarray:
 
             if self._endian == other._endian:
                 cmp = self._buffer[:vs // 8] != other._buffer[:vs // 8]
-                if cmp % 8 and vs % 8:
+                if cmp == 0 and vs % 8:
                     cmp = zeroed_last_byte(self) != zeroed_last_byte(other)
 
                 return bool(cmp == 0) ^ bool(op == Py_NE)
@@ -208,21 +242,30 @@ class bitarray:
         self._resize(0)
 
     def copy(self):
-        res = bitarray(self._nbits, self._endian)
+        res = bitarray(self._nbits, self.endian())
         res._buffer = bytearray(self._buffer)
 
     def count(self, vi: int = 1,
-              start: int = 0, stop = None, step: int = 1) -> int:
+              start: int = 0, stop: int = sys.maxsize, step: int = 1) -> int:
         check_bit(vi)
-        if stop is None:
-            stop = self._nbits
-        if step == 0:
-            raise ValueError
+
+        start = normalize_index(self._nbits, step, start)
+        stop  = normalize_index(self._nbits, step, stop)
 
         if step == 1:
             return self._count(vi, start, stop)
+        if step == 0:
+            raise ValueError("count step cannot be zero")
         else:
-            ...
+            slicelength: int = calc_slicelength(start, stop, step)
+            cnt: int = 0
+
+            start, stop, step = make_step_positive(slicelength,
+                                                   start, stop, step)
+            for i in range(start, stop, step):
+                cnt += getbit(self, i)
+
+            return cnt if vi else slicelength - cnt
 
     def endian(self) -> str:
         return 'big' if self._endian else 'little'
@@ -286,6 +329,9 @@ class bitarray:
         for i in range(len(self._buffer)):
             self._buffer[i] = 0xff if vi else 0x00
 
+    def to01(self):
+        return ''.join(str(getbit(self, i)) for i in range(self._nbits))
+
     def tolist(self):
         return [getbit(self, i) for i in range(self._nbits)]
 
@@ -299,7 +345,7 @@ class bitarray:
             return
 
         t: int = self._nbits
-        p = 8 * bits2bytes(t) - t
+        p: int = 8 * bits2bytes(t) - t
         assert 0 <= p < 8
         self._resize(t + p)
         assert self._nbits % 8 == 0
@@ -308,9 +354,11 @@ class bitarray:
         self._delete_n(t, p)
 
     def unpack(self, zero=b'\0', one=b'\1') -> bytes:
+        if not (isinstance(zero, bytes) and isinstance(one, bytes)):
+            raise TypeError
         res = bytearray()
         for i in range(self._nbits):
-            res.append(one if getbit(self, i) else zero)
+            res.append(ord(one if getbit(self, i) else zero))
         return bytes(res)
 
     def pack(self, data: bytes):
@@ -347,28 +395,50 @@ class bitarray:
         self._extend_dispatch(other)
 
     def __mul__(self, n: int):
+        if not isinstance(n, int):
+            raise TypeError
         ...
 
     def __delitem__(self, a):
         if isinstance(a, int):
+            if a < 0 or a >= self._nbits:
+                raise IndexError("bitarray assignment index out of range")
             self._delete_n(a, 1)
 
         elif isinstance(a, slice):
             start, stop, step = a.indices(self._nbits)
-            assert step > 0
+            slicelength: int = calc_slicelength(start, stop, step)
+            start, stop, step = make_step_positive(slicelength,
+                                                   start, stop, step)
             if step == 1:
-                self._delete_n(self, start, stop - start)
+                self._delete_n(start, stop - start)
             else:
+                assert step > 1
                 i = j = start
                 while i < self._nbits:
                     if (i - start) % step != 0 or i >= stop:
                         setbit(self, j, getbit(self, i))
                         j += 1
                     i += 1
-                self._resize(self._nbits - len(range(start, stop, step)))
+                self._resize(self._nbits - slicelength)
         else:
             TypeError("bitarray or int expected for slice assignment, not %s",
                       type(a).__name__)
+
+    def __getitem__(self, a):
+        if isinstance(a, int):
+            if a < 0 or a >= self._nbits:
+                raise IndexError("bitarray index out of range")
+            return getbit(self, a)
+
+        if isinstance(a, slice):
+            return ...
+
+        raise TypeError("bitarray indices must be integers or slices, not %s",
+                        type(item).__name__)
+
+    def __contains__(self, other):
+        ...
 
     def __lt__(self, other):
         return self._richcompare(other, Py_LT)
