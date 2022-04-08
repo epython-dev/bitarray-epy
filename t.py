@@ -8,4 +8,4 @@ a.reverse()
 print(a)
 print(a.count())
 del a[1]
-print(a)
+print(a == a)

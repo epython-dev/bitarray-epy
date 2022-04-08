@@ -4,6 +4,13 @@ from bitarray._header import (
 
 default_endian = 1
 
+Py_LT = 1
+Py_LE = 2
+Py_EQ = 3
+Py_NE = 4
+Py_GT = 5
+Py_GE = 6
+
 
 def bits2bytes(n: int, /) -> int:
     if not isinstance(n, int):
@@ -143,6 +150,47 @@ class bitarray:
 
         else:
             raise TypeError("'%s' object is not iterable" % type(obj).__name__)
+
+    def _richcompare(self, other, op):
+        if not isinstance(other, bitarray):
+            raise NotImplemented
+
+        vs: int = self._nbits
+        ws: int = other._nbits
+
+        if op == Py_EQ or op == Py_NE:
+            if vs != ws:
+                return op == Py_NE
+
+            if self._endian == other._endian:
+                cmp = self._buffer[:vs // 8] != other._buffer[:vs // 8]
+                if cmp % 8 and vs % 8:
+                    cmp = zeroed_last_byte(self) != zeroed_last_byte(other)
+
+                return bool(cmp == 0) ^ bool(op == Py_NE)
+
+        for i in range(min(vs, ws)):
+            vi: int = getbit(self, i)
+            wi: int = getbit(other, i)
+
+            if vi != wi:
+                if op == Py_LT:   cmp = v1 <  wi
+                elif op == Py_LE: cmp = vi <= wi
+                elif op == Py_EQ: cmp = 0
+                elif op == Py_NE: cmp = 1
+                elif op == Py_GT: cmp = vi >  wi
+                elif op == Py_GE: cmp = vi >= wi
+                else: exit("Py_UNREACHABLE")
+                return bool(cmp)
+
+        if op == Py_LT:   cmp = vs <  ws
+        elif op == Py_LE: cmp = vs <= ws
+        elif op == Py_EQ: cmp = vs == ws
+        elif op == Py_NE: cmp = vs != ws
+        elif op == Py_GT: cmp = vs >  ws
+        elif op == Py_GE: cmp = vs >= ws
+        else: exit("Py_UNREACHABLE")
+        return bool(cmp)
 
     # ------------------- Implementation of bitarray methods ---------------
 
@@ -300,6 +348,23 @@ class bitarray:
             TypeError("bitarray or int expected for slice assignment, not %s",
                       type(a).__name__)
 
+    def __lt__(self, other):
+        return self._richcompare(other, Py_LT)
+
+    def __le__(self, other):
+        return self._richcompare(other, Py_LE)
+
+    def __eq__(self, other):
+        return self._richcompare(other, Py_EQ)
+
+    def __ne__(self, other):
+        return self._richcompare(other, Py_NE)
+
+    def __gt__(self, other):
+        return self._richcompare(other, Py_GT)
+
+    def __ge__(self, other):
+        return self._richcompare(other, Py_GE)
 
 
 def get_default_endian():
