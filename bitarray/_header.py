@@ -9,7 +9,7 @@ ones_table = [
 ]
 
 
-def getbit(self, i: int):
+def getbit(self, i: int) -> int:
     mask = bitmask_table[self._endian][i % 8]
     return 1 if self._buffer[i // 8] & mask else 0
 

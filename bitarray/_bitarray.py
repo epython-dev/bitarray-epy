@@ -151,7 +151,7 @@ class bitarray:
 
         self._copy_n(k, self, 0, q - k)  # copy remaining bits
 
-    def _setrange(a: int, b: int, vi: int):
+    def _setrange(self, a: int, b: int, vi: int):
         assert 0 <= a <= self._nbits
         assert 0 <= b <= self._nbits
 
@@ -274,7 +274,7 @@ class bitarray:
         elif isinstance(obj, str):
             self._extend_01(obj)
 
-        elif isinstance(obj, iter):
+        elif hasattr(obj, '__iter__'):
             self._extend_iter(obj)
 
         else:
@@ -453,10 +453,11 @@ class bitarray:
 
     def setall(self, vi: int):
         check_bit(vi)
-        for i in range(len(self._buffer)):
-            self._buffer[i] = 0xff if vi else 0x00
+        self._buffer = len(self._buffer) * bytearray([0xff if vi else 0x00])
 
     def sort(self, reverse=False):
+        if not isinstance(reverse, int):
+            raise TypeError
         cnt: int = self._count(reverse, 0, self._nbits)
         self._setrange(0, cnt, reverse)
         self._setrange(cnt, self._nbits, not reverse)
@@ -609,7 +610,7 @@ class bitarray:
             if increase != 0:
                 raise ValueError("attempt to assign sequence of "
                                  "size %d to extended slice of size %d" %
-                                 other._nbits, slicelength)
+                                 (other._nbits, slicelength))
             i = 0
             j = start
             while i < slicelength:

@@ -1,6 +1,12 @@
 from bitarray import bitarray
 
-a = bitarray('1100111')
-print(len(a))
+a = bitarray(endian='little')
+print(a)
 print(a.endian())
-print(a.find(bitarray('01'), 3))
+a.frombytes(b'A')
+print(a)
+del a[4:]
+print(a)
+print(a.tolist())
+a.reverse()
+print(a)
