@@ -79,7 +79,15 @@ reverse_table = bytes([
     0x1f, 0x9f, 0x5f, 0xdf, 0x3f, 0xbf, 0x7f, 0xff,
 ])
 
-def pybit_as_int(value: int) -> int:
+def normalize_index(length: int, step: int, i: int):
+    if i < 0:
+        i += length
+        if i < 0:
+            i = -1 if step < 0 else 0
+    elif i >= length:
+        i = length -1 if step < 0 else length
+    return i
+
+def check_bit(value: int):
     if value < 0 or value > 1:
         raise ValueError("bit must be 0 or 1, got %d" % value)
-    return value

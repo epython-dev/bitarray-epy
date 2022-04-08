@@ -1,5 +1,5 @@
 from bitarray._header import (
-    getbit, setbit, setunused, reverse_table, pybit_as_int
+    getbit, setbit, setunused, reverse_table, normalize_index, check_bit,
 )
 
 default_endian = 1
@@ -125,6 +125,7 @@ class bitarray:
         ...
 
     def _extend_01(self, s: str):
+        org_bits: int = self._nbits
         for c in s:
             vi: int = -1
             if c == '0': vi = 0
@@ -132,6 +133,7 @@ class bitarray:
             if c in ('_', ' ', '\n', '\r',  '\t', '\v'):
                 continue
             if vi < 0:
+                self._resize(org_bits)
                 raise ValueError("expected '0' or '1' (or whitespace, or "
                         "underscore), got '%s' (0x%02x)" % (c, ord(c)));
             self._resize(self._nbits + 1)
@@ -194,8 +196,8 @@ class bitarray:
 
     # ------------------- Implementation of bitarray methods ---------------
 
-    def append(self, value):
-        vi :int = pybit_as_int(value)
+    def append(self, vi: int):
+        check_bit(vi)
         self._resize(self._nbits + 1)
         setbit(self, self._nbits - 1, vi)
 
@@ -209,11 +211,13 @@ class bitarray:
         res = bitarray(self._nbits, self._endian)
         res._buffer = bytearray(self._buffer)
 
-    def count(self, value: int = 1,
+    def count(self, vi: int = 1,
               start: int = 0, stop = None, step: int = 1) -> int:
-        vi: int = pybit_as_int(value)
+        check_bit(vi)
         if stop is None:
             stop = self._nbits
+        if step == 0:
+            raise ValueError
 
         if step == 1:
             return self._count(vi, start, stop)
@@ -231,9 +235,11 @@ class bitarray:
         self._resize(self, self._nbits + p)
         return p
 
-    def insert(self, i :int, value):
-        vi :int = pybit_as_int(value)
-        ...
+    def insert(self, i :int, value: int):
+        i = normalize_index(self._nbits, 1, i)
+        check_bit(value)
+        self._insert_n(i, 1)
+        setbit(self, i, vi)
 
     def invert(self, i = None):
         if i is None:
@@ -275,17 +281,31 @@ class bitarray:
             i += 1
             j -= 1
 
-    def setall(self, value: int):
-        vi: int = pybit_as_int(value)
+    def setall(self, vi: int):
+        check_bit(vi)
         for i in range(len(self._buffer)):
             self._buffer[i] = 0xff if vi else 0x00
+
+    def tolist(self):
+        return [getbit(self, i) for i in range(self._nbits)]
 
     def tobytes(self):
         setunused(self)
         return bytes(self._buffer)
 
-    def tolist(self):
-        return [getbit(self, i) for i in range(self._nbits)]
+    def frombytes(self, data: bytes):
+        nbytes: int = len(data)
+        if nbytes == 0:
+            return
+
+        t: int = self._nbits
+        p = 8 * bits2bytes(t) - t
+        assert 0 <= p < 8
+        self._resize(t + p)
+        assert self._nbits % 8 == 0
+        self._nbits += 8 * nbytes
+        self._buffer += data
+        self._delete_n(t, p)
 
     def unpack(self, zero=b'\0', one=b'\1') -> bytes:
         res = bytearray()
@@ -294,6 +314,8 @@ class bitarray:
         return bytes(res)
 
     def pack(self, data: bytes):
+        if not isinstance(data, bytes):
+            raise TypeError
         nbits: int = self._nbits
         nbytes: int = len(data)
 
