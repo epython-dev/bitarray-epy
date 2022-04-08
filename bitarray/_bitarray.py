@@ -139,7 +139,7 @@ class bitarray:
         assert m > 1 and k > 0
         if k >= maxsize // m:
             raise OverflowError("cannot repeat bitarray (of size %d) "
-                                "%d times", k, m);
+                                "%d times" % (k, m))
 
         q: int = k * m  # number of resulting bits
         self._resize(q)
@@ -525,6 +525,13 @@ class bitarray:
         self._delete_n(i, 1)
         return vi
 
+    def remove(self, vi: int):
+        check_bit(vi)
+        i: int = self._find_bit(vi, 0, self._nbits)
+        if i < 0:
+            raise ValueError("%d not in bitarray" % vi)
+        self._delete_n(i, 1)
+
     def __add__(self, other):
         res = self.copy()
         res._extend_dispatch(other)
@@ -540,6 +547,8 @@ class bitarray:
         res = self.copy()
         res._repeat(n)
         return res
+
+    __rmul__ = __mul__
 
     def __imul__(self, n: int):
         if not isinstance(n, int):
@@ -595,8 +604,8 @@ class bitarray:
                     j += step
             return res
 
-        raise TypeError("bitarray indices must be integers or slices, not %s",
-                        type(item).__name__)
+        raise TypeError("bitarray indices must be integers or slices, "
+                        "not %s" % type(a).__name__)
 
     def _setslice_bitarray(self, sl, other):
         start, stop, step = sl.indices(self._nbits)
@@ -646,7 +655,7 @@ class bitarray:
             elif isinstance(value, int):
                 self._setslice_bool(a, value)
             else:
-                raise TypeError("bitarray or int expected, got %s",
+                raise TypeError("bitarray or int expected, got %s" %
                                 type(value).__name__)
 
         else:
@@ -658,7 +667,10 @@ class bitarray:
             check_bit(a)
             return self._find_bit(a, 0, self._nbits) >= 0
 
-        raise TypeError("bitarray or int expected, got %s", type(a).__name__)
+        if isinstance(a, bitarray):
+            return self._find(a, 0, self._nbits) >= 0
+
+        raise TypeError("bitarray or int expected, got %s" % type(a).__name__)
 
     def __lt__(self, other):
         return self._richcompare(other, Py_LT)
