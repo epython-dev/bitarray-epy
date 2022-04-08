@@ -225,7 +225,7 @@ class bitarray:
 
     def _richcompare(self, other, op):
         if not isinstance(other, bitarray):
-            raise NotImplementedError
+            return NotImplemented
 
         vs: int = self._nbits
         ws: int = other._nbits
@@ -286,6 +286,7 @@ class bitarray:
     def copy(self):
         res = bitarray(self._nbits, self.endian())
         res._buffer = bytearray(self._buffer)
+        return res
 
     def count(self, vi: int = 1,
               start: int = 0, stop: int = sys.maxsize, step: int = 1) -> int:
@@ -435,6 +436,7 @@ class bitarray:
 
     def __iadd__(self, other):
         self._extend_dispatch(other)
+        return self
 
     def __mul__(self, n: int):
         if not isinstance(n, int):
@@ -453,7 +455,7 @@ class bitarray:
             start, stop, step = make_step_positive(slicelength,
                                                    start, stop, step)
             if step == 1:
-                self._delete_n(start, stop - start)
+                self._delete_n(start, slicelength)
             else:
                 assert step > 1
                 i = j = start
@@ -464,8 +466,8 @@ class bitarray:
                     i += 1
                 self._resize(self._nbits - slicelength)
         else:
-            TypeError("bitarray or int expected for slice assignment, not %s",
-                      type(a).__name__)
+            raise TypeError("bitarray or int expected for slice assignment, "
+                            "not %s" % type(a).__name__)
 
     def __getitem__(self, a):
         if isinstance(a, int):
@@ -474,23 +476,78 @@ class bitarray:
             return getbit(self, a)
 
         if isinstance(a, slice):
-            return ...
+            start, stop, step = a.indices(self._nbits)
+            slicelength: int = calc_slicelength(start, stop, step)
+
+            res = bitarray(slicelength, self.endian())
+            if step == 1:
+                res._copy_n(0, self, start, slicelength)
+            else:
+                i = 0
+                j = start
+                while i < slicelength:
+                    setbit(res, i, getbit(self, j))
+                    i += 1
+                    j += step
+            return res
 
         raise TypeError("bitarray indices must be integers or slices, not %s",
                         type(item).__name__)
 
-    def __setitem__(self, a, val):
+    def _setslice_bitarray(self, sl, other):
+        start, stop, step = sl.indices(self._nbits)
+        slicelength: int = calc_slicelength(start, stop, step)
+
+        increase: int = other._nbits - slicelength
+
+        other = other.copy()
+
+        if step == 1:
+            if increase > 0:
+                self._insert_n(start + slicelength, increase)
+            if increase < 0:
+                self._delete_n(start + other._nbits, -increase)
+            self._copy_n(start, other, 0, other._nbits)
+        else:
+            if increase != 0:
+                raise ValueError("attempt to assign sequence of "
+                                 "size %d to extended slice of size %d" %
+                                 other._nbits, slicelength)
+            i = 0
+            j = start
+            while i < slicelength:
+                setbit(self, j, getbit(other, i))
+                i += 1
+                j += step
+
+    def _setslice_bool(self, sl, vi):
+        check_bit(vi)
+        start, stop, step = sl.indices(self._nbits)
+        slicelength: int = calc_slicelength(start, stop, step)
+        start, stop, step = make_step_positive(slicelength,
+                                               start, stop, step)
+        for i in range(start, stop, step):
+            setbit(self, i, vi)
+
+    def __setitem__(self, a, value):
         if isinstance(a, int):
             if a < 0 or a >= self._nbits:
                 raise IndexError("bitarray assignment index out of range")
-            check_bit(val)
-            return setbit(self, a, val)
+            check_bit(value)
+            setbit(self, a, value)
 
-        if isinstance(a, slice):
-            return ...
+        elif isinstance(a, slice):
+            if isinstance(value, bitarray):
+                self._setslice_bitarray(a, value)
+            elif isinstance(value, int):
+                self._setslice_bool(a, value)
+            else:
+                raise TypeError("bitarray or int expected, got %s",
+                                type(value).__name__)
 
-        raise TypeError("bitarray indices must be integers or slices, not %s",
-                        type(item).__name__)
+        else:
+            raise TypeError("bitarray indices must be integers or slices, "
+                            "not %s" % type(item).__name__)
 
     def __contains__(self, a):
         if isinstance(a, int):
