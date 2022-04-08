@@ -108,7 +108,26 @@ class bitarray:
             for i in range(n - 1, -1, -1):
                 setbit(self, i + a, getbit(other, i + b))
 
-    def _count(self, vi: int, a: int, b:int):
+    def _delete_n(self, start: int, n: int):
+        nbits: int = self._nbits
+
+        assert 0 <= start and start <= nbits
+        assert 0 <= n and n <= nbits - start
+        assert start != nbits or n == 0  # start == nbits implies n == 0
+
+        self._copy_n(start, self, start + n, nbits - start - n)
+        self._resize(nbits - n);
+
+    def _insert_n(self, start :int, n: int):
+        nbits: int = self._nbits
+
+        assert 0 <= start and start <= nbits
+        assert n >= 0
+
+        self._resize(nbits + n)
+        self._copy_n(start + n, self, start, nbits - start)
+
+    def _count(self, vi: int, a: int, b:int) -> int:
         res: int = 0
         assert 0 <= a <= self._nbits
         assert 0 <= b <= self._nbits
@@ -129,24 +148,35 @@ class bitarray:
 
         return res if vi else b - a - res
 
-    def _delete_n(self, start: int, n: int):
-        nbits: int = self._nbits
+    def _find_bit(self, vi: int, a: int, b: int) -> int:
+        n: int = b - a
+        assert 0 <= a and a <= self._nbits
+        assert 0 <= b and b <= self._nbits
+        assert 0 <= vi and vi <= 1
+        if n <= 0:
+            return -1;
 
-        assert 0 <= start and start <= nbits
-        assert 0 <= n and n <= nbits - start
-        assert start != nbits or n == 0  # start == nbits implies n == 0
+        if n > 8:
+            byte_a: int = bits2bytes(a)
+            byte_b: int = b // 8
+            c: int = 0x00 if vi else 0xff
 
-        self._copy_n(start, self, start + n, nbits - start - n)
-        self._resize(nbits - n);
+            res = self._find_bit(vi, a, 8 * byte_a)
+            if res >= 0:
+                return res
 
-    def _insert_n(self, start :int, n: int):
-        nbits: int = self._nbits
+            for i in range(byte_a, byte_b):  # skip bytes
+                if c ^ self._buffer[i]:
+                    return self._find_bit(vi, 8 * i, 8 * i + 8)
 
-        assert 0 <= start and start <= nbits
-        assert n >= 0
+            return self._find_bit(vi, 8 * byte_b, b)
 
-        self._resize(nbits + n)
-        self._copy_n(start + n, self, start, nbits - start)
+        assert n <= 8
+        for i in range(a, b):
+            if getbit(self, i) == vi:
+                return i
+
+        return -1
 
     def _extend_bitarray(self, other):
         self_nbits: int = self._nbits
@@ -155,8 +185,11 @@ class bitarray:
         self._resize(self_nbits + other_nbits)
         self._copy_n(self_nbits, other, 0, other_nbits)
 
-    def _entend_iter(self, iterator):
-        ...
+    def _extend_iter(self, iterator):
+        for vi in iterator:
+            vi = check_bit(vi)
+            self._resize(self._nbits + 1)
+            setbit(self, self._nbits - 1, vi)
 
     def _extend_01(self, s: str):
         org_bits: int = self._nbits
@@ -183,6 +216,9 @@ class bitarray:
 
         elif isinstance(obj, str):
             self._extend_01(obj)
+
+        elif isinstance(obj, iter):
+            self._extend_iter(obj)
 
         else:
             raise TypeError("'%s' object is not iterable" % type(obj).__name__)
@@ -229,6 +265,12 @@ class bitarray:
         return bool(cmp)
 
     # ------------------- Implementation of bitarray methods ---------------
+
+    def all(self) -> bool:
+        return self._find_bit(0, 0, self._nbits) == -1
+
+    def any(self) -> bool:
+        return self._find_bit(1, 0, self._nbits) >= 0
 
     def append(self, vi: int):
         check_bit(vi)
@@ -437,8 +479,26 @@ class bitarray:
         raise TypeError("bitarray indices must be integers or slices, not %s",
                         type(item).__name__)
 
-    def __contains__(self, other):
-        ...
+    def __setitem__(self, a, val):
+        if isinstance(a, int):
+            if a < 0 or a >= self._nbits:
+                raise IndexError("bitarray assignment index out of range")
+            check_bit(val)
+            return setbit(self, a, val)
+
+        if isinstance(a, slice):
+            return ...
+
+        raise TypeError("bitarray indices must be integers or slices, not %s",
+                        type(item).__name__)
+
+    def __contains__(self, a):
+        if isinstance(a, int):
+            check_bit(a)
+            return self._find_bit(a, 0, self._nbits) >= 0
+
+        raise TypeError("bitarray or int expected, got %s",
+                        type(value).__name__)
 
     def __lt__(self, other):
         return self._richcompare(other, Py_LT)
