@@ -664,7 +664,7 @@ class InternalTests(unittest.TestCase, Util):
         y = bitarray('00011000 10011')
         x._shift_r8(0, 2, 3)
         self.assertEqual(x, y)
-
+    """
     def test_shift_r8_random_bytes(self):
         for N in range(100):
             a = randint(0, N)
@@ -676,7 +676,7 @@ class InternalTests(unittest.TestCase, Util):
             y[8 * a : 8 * b] >>= n
             self.assertEQUAL(x, y)
             self.assertEqual(len(x), 8 * N)
-
+    """
     def test_copy_n_explicit(self):
         x = bitarray('11000100 11110')
         #                 ^^^^ ^
@@ -752,7 +752,7 @@ class InternalTests(unittest.TestCase, Util):
             b = self.getslice(a, i, j - i)
             self.assertEqual(b.tolist(), a_lst[i:j])
             self.assertEQUAL(b, a[i:j])
-
+    """
     def check_overlap(self, a, b, res):
         r1 = a._overlap(b)
         r2 = b._overlap(a)
@@ -811,9 +811,8 @@ class InternalTests(unittest.TestCase, Util):
             x1[i1:j1] = 1
             x2[i2:j2] = 1
             self.check_overlap(b1, b2, (x1 & x2).any())
-
-if DEBUG:
-    tests.append(InternalTests)
+    """
+tests.append(InternalTests)
 
 # ---------------------------------------------------------------------------
 

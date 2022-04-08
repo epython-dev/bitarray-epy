@@ -1,7 +1,7 @@
 from sys import maxsize
 
 from bitarray._header import (
-    getbit, setbit, zeroed_last_byte, setunused, bitcount_lookup,
+    getbit, setbit, zeroed_last_byte, setunused, ones_table, bitcount_lookup,
     reverse_table, normalize_index, check_bit,
 )
 
@@ -96,11 +96,47 @@ class bitarray:
         if newsize < size:
             del self._buffer[newsize:]
 
+    def _shift_r8(self, a: int, b: int, n: int):
+        assert 0 <= n and n < 8 and a <= b
+        assert 0 <= a and a <= len(self._buffer)
+        assert 0 <= b and b <= len(self._buffer)
+        if n == 0 or a == b:
+            return
+
+        if self._endian:
+            self.bytereverse(a, b)
+
+        buff = self._buffer
+        for i in range(b - 1, a - 1, -1):
+            buff[i] = (buff[i] << n) % 0x100
+            if i != a:
+                buff[i] |= buff[i - 1] >> (8 - n)
+
+        if self._endian:
+            self.bytereverse(a, b)
+
     def _copy_n(self, a: int, other, b: int, n: int):
         assert 0 <= a <= self._nbits
         assert 0 <= b <= other._nbits
         assert n >= 0
         if n == 0 or (self is other and a == b):
+            return
+
+        if a % 8 == 0 and b % 8 == 0:            # aligned case
+            p1 = a // 8
+            p2 = (a + n - 1) // 8
+            m = bits2bytes(n)
+
+            assert p1 + m == p2 + 1
+            m2 = ones_table[self._endian][(a + n) % 8]
+            t2 = self._buffer[p2]
+
+            self._buffer[p1:p1 + m] = other._buffer[b // 8:b // 8 + m]
+            if self._endian != other._endian:
+                self.bytereverse(p1, p2 + 1)
+
+            if m2:
+                self._buffer[p2] = (self._buffer[p2] & m2) | (t2 & ~m2)
             return
 
         if a <= b:  # loop forward
