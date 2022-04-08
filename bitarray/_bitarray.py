@@ -24,7 +24,7 @@ def bits2bytes(n: int, /) -> int:
     return (n + 7) // 8
 
 def endian_from_string(s: str) -> int:
-    if s is '<default>':
+    if s == '<default>':
         return default_endian
     if s == 'little':
         return 0
@@ -277,7 +277,14 @@ class bitarray:
         self._resize(self._nbits + 1)
         setbit(self, self._nbits - 1, vi)
 
-    def bytereverse(self, a: int, b: int):
+    def bytereverse(self, a: int = 0, b: int = sys.maxsize):
+        nbytes: int = len(self._buffer)
+        if b == sys.maxsize:
+            b = nbytes
+
+        if a < 0 or a > nbytes or b < 0 or b > nbytes:
+            raise IndexError("byte index out of range")
+
         self._buffer[a:b] = self._buffer[a:b].translate(reverse_table)
 
     def clear(self):
@@ -554,8 +561,7 @@ class bitarray:
             check_bit(a)
             return self._find_bit(a, 0, self._nbits) >= 0
 
-        raise TypeError("bitarray or int expected, got %s",
-                        type(value).__name__)
+        raise TypeError("bitarray or int expected, got %s", type(a).__name__)
 
     def __lt__(self, other):
         return self._richcompare(other, Py_LT)
