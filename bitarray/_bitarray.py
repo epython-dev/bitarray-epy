@@ -327,6 +327,7 @@ class bitarray:
     def _setrange(self, a: int, b: int, vi: int):
         assert 0 <= a <= self._nbits
         assert 0 <= b <= self._nbits
+        assert a <= b
 
         if b >= a + 8:
             byte_a: int = bits2bytes(a)
@@ -741,6 +742,9 @@ class bitarray:
         elif isinstance(item, slice):
             start, stop, step, slicelength = get_indices(item, self._nbits, 1)
 
+            if slicelength == 0:
+                return
+
             if step == 1:
                 self._delete_n(start, slicelength)
             else:
@@ -810,6 +814,7 @@ class bitarray:
     def _setslice_bool(self, sl, vi):
         check_bit(vi)
         start, stop, step, slicelength = get_indices(sl, self._nbits, 1)
+
         if slicelength == 0:
             return
 
