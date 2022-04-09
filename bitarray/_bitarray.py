@@ -198,10 +198,10 @@ class bitarray:
             del self._buffer[newsize:]
 
     def _shift_r8(self, a: int, b: int, n: int):
-        assert 0 <= n and n < 8 and a <= b
+        assert 0 <= n and n < 8
         assert 0 <= a and a <= len(self._buffer)
         assert 0 <= b and b <= len(self._buffer)
-        if n == 0 or a == b:
+        if n == 0 or a >= b:
             return
 
         if self._endian:
@@ -327,7 +327,6 @@ class bitarray:
     def _setrange(self, a: int, b: int, vi: int):
         assert 0 <= a <= self._nbits
         assert 0 <= b <= self._nbits
-        assert a <= b
 
         if b >= a + 8:
             byte_a: int = bits2bytes(a)
@@ -566,7 +565,7 @@ class bitarray:
         self._resize(self._nbits + p)
         return p
 
-    def find(self, x, start: int = 0, stop: int = maxsize):
+    def find(self, x, start: int = 0, stop: int = maxsize) -> int:
         start = normalize_index(self._nbits, 1, start)
         stop = normalize_index(self._nbits, 1, stop)
 
@@ -580,7 +579,7 @@ class bitarray:
         raise TypeError("bitarray or int expected, not '%s'" %
                         type(x).__name__)
 
-    def index(self, *args):
+    def index(self, *args) -> int:
         res = self.find(*args)
         if res < 0:
             raise ValueError("%r not in bitarray" % (args[0]))
@@ -616,10 +615,11 @@ class bitarray:
         if self._nbits == 0:
             return 'bitarray()'
 
-        res = bytearray(b"bitarray('")
+        res = bytearray(self._nbits + 12)
+        res[0:10] = b"bitarray('"
         for i in range(self._nbits):
-            res.append(ord('1') if getbit(self, i) else ord('0'))
-        res.extend(b"')")
+            res[i + 10] = ord('1') if getbit(self, i) else ord('0')
+        res[-2:] = b"')"
         return res.decode('ascii')
 
     def reverse(self):
@@ -643,13 +643,16 @@ class bitarray:
         self._setrange(0, cnt, reverse)
         self._setrange(cnt, self._nbits, not reverse)
 
-    def to01(self):
-        return ''.join(str(getbit(self, i)) for i in range(self._nbits))
+    def to01(self) -> str:
+        res = bytearray(self._nbits)
+        for i in range(self._nbits):
+            res[i] = ord('1') if getbit(self, i) else ord('0')
+        return res.decode('ascii')
 
-    def tolist(self):
+    def tolist(self) -> list:
         return [getbit(self, i) for i in range(self._nbits)]
 
-    def tobytes(self):
+    def tobytes(self) -> bytes:
         setunused(self)
         return bytes(self._buffer)
 
@@ -686,7 +689,7 @@ class bitarray:
         for i in range(nbytes):
             setbit(self, nbits + i, data[i])
 
-    def pop(self, i: int = -1):
+    def pop(self, i: int = -1) -> int:
         if self._nbits == 0:
             raise IndexError("pop from empty bitarray")
 
