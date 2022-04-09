@@ -420,7 +420,7 @@ class bitarray:
         for vi in iterator:
             if not isinstance(vi, int):
                 self._resize(org_bits)
-                raise TypeError
+                raise TypeError("int expected")
             if vi < 0 or vi > 1:
                 self._resize(org_bits)
                 raise ValueError("bit must be 0 or 1, got %d" % vi)
@@ -635,9 +635,9 @@ class bitarray:
         check_bit(vi)
         self._buffer[:] = len(self._buffer) * (b'\xff' if vi else b'\0')
 
-    def sort(self, reverse=False):
+    def sort(self, reverse: int = 0):
         if not isinstance(reverse, int):
-            raise TypeError
+            raise TypeError("int expected")
         cnt: int = self._count(reverse, 0, self._nbits)
         self._setrange(0, cnt, reverse)
         self._setrange(cnt, self._nbits, not reverse)
@@ -668,7 +668,7 @@ class bitarray:
 
     def unpack(self, zero=b'\0', one=b'\1') -> bytes:
         if not (isinstance(zero, bytes) and isinstance(one, bytes)):
-            raise TypeError
+            raise TypeError("bytes expected")
         res = bytearray()
         for i in range(self._nbits):
             res.append(ord(one if getbit(self, i) else zero))
@@ -676,7 +676,7 @@ class bitarray:
 
     def pack(self, data: bytes):
         if not isinstance(data, bytes):
-            raise TypeError
+            raise TypeError("bytes expected")
         nbits: int = self._nbits
         nbytes: int = len(data)
 
@@ -717,7 +717,7 @@ class bitarray:
 
     def __mul__(self, n: int):
         if not isinstance(n, int):
-            raise TypeError
+            raise TypeError("int expected")
         res = self.copy()
         res._repeat(n)
         return res
@@ -726,7 +726,7 @@ class bitarray:
 
     def __imul__(self, n: int):
         if not isinstance(n, int):
-            raise TypeError
+            raise TypeError("int expected")
         self._repeat(n)
         return self
 
@@ -876,5 +876,5 @@ def get_default_endian():
 def _set_default_endian(s: str, /):
     global default_endian
     if not isinstance(s, str):
-        raise TypeError
+        raise TypeError("str expected")
     default_endian = endian_from_string(s)
