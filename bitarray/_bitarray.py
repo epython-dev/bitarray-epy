@@ -198,6 +198,7 @@ class bitarray:
             del self._buffer[newsize:]
 
     def _shift_r8(self, a: int, b: int, n: int):
+        m: int = 8 - n
         assert 0 <= n and n < 8
         assert 0 <= a and a <= len(self._buffer)
         assert 0 <= b and b <= len(self._buffer)
@@ -211,7 +212,7 @@ class bitarray:
         for i in range(b - 1, a - 1, -1):
             buff[i] = (buff[i] << n) % 0x100
             if i != a:
-                buff[i] |= buff[i - 1] >> (8 - n)
+                buff[i] |= buff[i - 1] >> m
 
         if self._endian:
             self.bytereverse(a, b)
@@ -603,7 +604,7 @@ class bitarray:
         if i < 0 or i >= self._nbits:
             raise IndexError("index out of range")
 
-        setbit(self, i, not getbit(self, i))
+        self._buffer[i // 8] ^= bitmask_table[self._endian][i % 8]
 
     def __len__(self) -> int:
         return self._nbits
@@ -753,12 +754,12 @@ class bitarray:
             else:
                 assert step > 1
                 i = j = start
-                while i < self._nbits:
-                    if (i - start) % step != 0 or i >= stop:
+                while i < stop:
+                    if (i - start) % step != 0:
                         setbit(self, j, getbit(self, i))
                         j += 1
                     i += 1
-                self._resize(self._nbits - slicelength)
+                self._delete_n(stop - slicelength, slicelength)
         else:
             raise TypeError("bitarray or int expected for slice assignment, "
                             "not %s" % type(item).__name__)
