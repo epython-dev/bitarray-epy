@@ -20,3 +20,5 @@ Notes:
   * Not sure how to implement memoryview(a)
 
   * How can standard library calls (memmove(), memcpy(), etc.) be made?
+
+  * Some functionality, e.g. unaligned copying, is many hundred times slower
