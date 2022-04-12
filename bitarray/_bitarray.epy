@@ -210,7 +210,7 @@ class bitarray:
 
         buff = self._buffer
         for i in range(b - 1, a - 1, -1):
-            buff[i] = (buff[i] << n) % 0x100
+            buff[i] = (buff[i] << n) & 0xff
             if i != a:
                 buff[i] |= buff[i - 1] >> m
 
