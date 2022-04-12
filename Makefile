@@ -2,7 +2,7 @@ PYTHON=python
 
 
 test:
-	$(PYTHON) -c "import bitarray; bitarray.test()"
+	$(PYTHON) -c "import epython, bitarray; bitarray.test()"
 
 
 clean:
