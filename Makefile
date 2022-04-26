@@ -7,3 +7,4 @@ test:
 
 clean:
 	rm -rf bitarray/__pycache__ *.egg-info
+	rm -rf __pycache__/
