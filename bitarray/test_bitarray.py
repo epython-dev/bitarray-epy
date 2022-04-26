@@ -3,14 +3,10 @@ Tests for bitarray
 
 Author: Ilan Schnell
 """
-from __future__ import absolute_import
-
 import re
 import os
 import sys
 import unittest
-import shutil
-import tempfile
 from random import randint
 
 # imports needed inside tests
@@ -23,14 +19,9 @@ import shelve
 import weakref
 
 
-is_py3k = bool(sys.version_info[0] == 3)
+is_py3k = True
 
-if is_py3k:
-    from io import BytesIO
-else:
-    from cStringIO import StringIO as BytesIO  # type: ignore
-    range = xrange  # type: ignore
-
+from io import BytesIO
 
 from bitarray import (bitarray, frozenbitarray, bits2bytes,
                       get_default_endian, _set_default_endian,
