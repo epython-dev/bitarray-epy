@@ -83,7 +83,7 @@ reverse_table = bytes([
     0x1f, 0x9f, 0x5f, 0xdf, 0x3f, 0xbf, 0x7f, 0xff,
 ])
 
-def normalize_index(length: int, step: int, i: int):
+def normalize_index(length: int, step: int, i: int) -> int:
     if i < 0:
         i += length
         if i < 0:
@@ -537,8 +537,8 @@ class bitarray:
               start: int = 0, stop: int = maxsize, step: int = 1) -> int:
         check_bit(vi)
 
-        start = normalize_index(self._nbits, step, start)
-        stop  = normalize_index(self._nbits, step, stop)
+        start: int = normalize_index(self._nbits, step, start)
+        stop: int = normalize_index(self._nbits, step, stop)
 
         if step == 1:
             return self._count(vi, start, stop)
@@ -567,8 +567,8 @@ class bitarray:
         return p
 
     def find(self, x, start: int = 0, stop: int = maxsize) -> int:
-        start = normalize_index(self._nbits, 1, start)
-        stop = normalize_index(self._nbits, 1, stop)
+        start: int = normalize_index(self._nbits, 1, start)
+        stop: int = normalize_index(self._nbits, 1, stop)
 
         if isinstance(x, int):
             check_bit(x)
@@ -587,7 +587,7 @@ class bitarray:
         return res
 
     def insert(self, i :int, vi: int):
-        i = normalize_index(self._nbits, 1, i)
+        i: int = normalize_index(self._nbits, 1, i)
         check_bit(vi)
         self._insert_n(i, 1)
         setbit(self, i, vi)
